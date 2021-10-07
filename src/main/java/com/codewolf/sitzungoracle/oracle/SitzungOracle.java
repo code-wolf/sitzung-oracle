@@ -9,15 +9,19 @@ import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.Type;
 import org.web3j.abi.datatypes.Utf8String;
 import org.web3j.abi.datatypes.generated.Bytes32;
+import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.DefaultBlockParameter;
 import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.request.Transaction;
+import org.web3j.protocol.core.methods.response.EthEstimateGas;
 import org.web3j.protocol.core.methods.response.EthGetTransactionCount;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.core.methods.response.Web3ClientVersion;
 import org.web3j.protocol.http.HttpService;
 import org.web3j.tx.Contract;
+import org.web3j.tx.FastRawTransactionManager;
+import org.web3j.tx.TransactionManager;
 import org.web3j.tx.gas.DefaultGasProvider;
 
 import java.math.BigInteger;
@@ -35,16 +39,29 @@ public class SitzungOracle {
         web3 = Web3j.build(new HttpService());
     }
 
-    public void createSitzung() {
+    public void createSitzung() throws Exception {
         try {
+            Credentials creds = Credentials.create("de941bace8537cbc11f20407e0aab989db7da2109edd0792e66cde5916b84201");
+
             Function function = new Function("createSitzung",
                     Arrays.asList(new Utf8String("Oracle")),
-                    Collections.<TypeReference<?>>emptyList());
+                    Collections.emptyList());
             String encodedFunction = FunctionEncoder.encode(function);
+
+            //BigInteger estimatedGas = estimateGas(encodedFunction);
+
             BigInteger nonce = getNonce();
             BigInteger gasPrice = DefaultGasProvider.GAS_PRICE;
-            BigInteger gasLimit = DefaultGasProvider.GAS_LIMIT;
+            //BigInteger gasLimit = DefaultGasProvider.GAS_LIMIT;
+            BigInteger gasLimit = BigInteger.valueOf(900000);
 
+
+            TransactionManager txManager = new FastRawTransactionManager(web3, creds);
+            EthSendTransaction tx = txManager.sendTransaction(gasPrice, gasLimit, ONCHAIN_ORACLE_ADDRESS, encodedFunction, BigInteger.ZERO);
+            String txHash = tx.getTransactionHash();
+
+
+            /*
             Transaction transaction = Transaction.createFunctionCallTransaction(
                     ACCOUNT,
                     nonce,
@@ -54,12 +71,16 @@ public class SitzungOracle {
                     BigInteger.valueOf(0),
                     encodedFunction);
 
-            EthSendTransaction response = web3.ethSendTransaction(transaction).sendAsync().get();
-            String transactionHash = response.getTransactionHash();
+            EthSendTransaction tx = web3.ethSendTransaction(transaction).sendAsync().get();
+            */
+
+            if(tx.hasError()) {
+                throw new Exception(tx.getError().getMessage());
+            }
+            String transactionHash = tx.getTransactionHash();
             logger.info("executed transaction with hash " + transactionHash);
-        } catch (Exception e) {
-            logger.error(e.getMessage());
-            e.printStackTrace();
+        } catch(Exception e) {
+            throw e;
         }
     }
 
@@ -69,5 +90,15 @@ public class SitzungOracle {
                 .get();
         BigInteger nonce = count.getTransactionCount();
         return nonce;
+    }
+
+    private BigInteger estimateGas(String encodedFunction) throws Exception {
+        EthEstimateGas ethEstimateGas = web3.ethEstimateGas(
+                        Transaction.createEthCallTransaction(ACCOUNT, null, encodedFunction))
+                .sendAsync().get();
+
+        // this was coming back as 50,000,000 which is > the block gas limit of 4,712,388
+        // see eth.getBlock("latest")
+        return ethEstimateGas.getAmountUsed().divide(BigInteger.valueOf(100));
     }
 }
