@@ -21,7 +21,7 @@ class SitzungOracleApplicationTests {
     }
 
     @Test
-    void testClientVersion() {
+    void testCreateSitzung() {
         try {
             oracle.createSitzung();
         } catch(Exception e) {
