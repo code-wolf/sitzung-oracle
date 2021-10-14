@@ -25,6 +25,7 @@ import org.web3j.tx.FastRawTransactionManager;
 import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.TransactionManager;
 import org.web3j.tx.gas.DefaultGasProvider;
+import org.web3j.tx.gas.StaticGasProvider;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -36,9 +37,10 @@ import java.util.List;
 @Component
 public class SitzungOracle {
     private static final Logger logger = LoggerFactory.getLogger(SitzungOracle.class);
-    private static final String ONCHAIN_ORACLE_ADDRESS = "0xe4abD1590E4f67441586626739b9aaebe64f8E92";
+    private static final String ONCHAIN_ORACLE_ADDRESS = "0x572C8B01E651626079Adb759961f27e868Aefc64";
     private static final String ACCOUNT = "0xE3c0335ABb6ec86DD13BB01Ff63762F00aec31c7";
-    Web3j web3;
+    private final Web3j web3;
+
     public SitzungOracle() {
         web3 = Web3j.build(new HttpService("http://localhost:7545"));
     }
@@ -49,46 +51,48 @@ public class SitzungOracle {
             //Credentials creds = Credentials.create("de941bace8537cbc11f20407e0aab989db7da2109edd0792e66cde5916b84201");
 
             //0xE3c0335ABb6ec86DD13BB01Ff63762F00aec31c7
-            Credentials creds = Credentials.create("b6e5f67e5474372d16e90ad72392383ceee0e6f9c47f288ed6288cac445ce439");
+            Credentials credentials = Credentials.create("b6e5f67e5474372d16e90ad72392383ceee0e6f9c47f288ed6288cac445ce439");
 
             String id = "1234";
-
             List<Voter> voters = getVoters();
-
-
             Sitzung sitzung = new Sitzung("1234", "Gemeinderat");
 
-            /*
             Function function = new Function("createSitzung",
-                    Arrays.asList(sitzung, new DynamicArray(Voter.class, voters)),
+                    Arrays.asList(sitzung, new DynamicArray(Voter.class, voters), new DynamicArray(AgendaItem.class, getAgenda())),
                     Collections.emptyList());
-*/
+
+            /*
             Function function = new Function("testSitzung",
                     Collections.emptyList(),
                     Collections.emptyList());
-
+            */
             String encodedFunction = FunctionEncoder.encode(function);
 
-            BigInteger estimatedGas = estimateGas(encodedFunction);
+            String transactionHash = sendTransaction(encodedFunction, credentials);
+            logger.info("executed transaction with hash " + transactionHash);
+        } catch(Exception e) {
+            throw e;
+        }
+    }
 
-            BigInteger nonce = getNonce();
-            //BigInteger gasPrice = DefaultGasProvider.GAS_PRICE;
-            //BigInteger gasLimit = DefaultGasProvider.GAS_LIMIT;
-            //BigInteger gasLimit = BigInteger.valueOf(900000);
-            BigInteger gasPrice = BigInteger.ZERO;
-            BigInteger gasLimit = estimatedGas;
+    /**
+     *
+     * @param function An encoded function
+     * @return Transaction hash of the transaction
+     */
+    private String sendTransaction(String function, Credentials credentials) throws Exception {
+        StaticGasProvider gas = getGas(function);
+
+        TransactionManager txManager = new RawTransactionManager(web3, credentials);
+        EthSendTransaction tx = txManager.sendTransaction(
+                gas.getGasPrice(),
+                gas.getGasLimit(),
+                ONCHAIN_ORACLE_ADDRESS,
+                function,
+                BigInteger.ZERO);
 
             /*
-            TransactionManager txManager = new RawTransactionManager(web3, creds);
-            EthSendTransaction tx = txManager.sendTransaction(
-                    gasPrice,
-                    gasLimit,
-                    ONCHAIN_ORACLE_ADDRESS,
-                    encodedFunction,
-                    BigInteger.ZERO);
-            String txHash = tx.getTransactionHash();
-               */
-
+            BigInteger nonce = getNonce();
             Transaction transaction = Transaction.createFunctionCallTransaction(
                     ACCOUNT,
                     nonce,
@@ -99,15 +103,26 @@ public class SitzungOracle {
                     encodedFunction);
 
             EthSendTransaction tx = web3.ethSendTransaction(transaction).sendAsync().get();
+            */
 
-            if(tx.hasError()) {
-                throw new Exception(tx.getError().getMessage());
-            }
-            String transactionHash = tx.getTransactionHash();
-            logger.info("executed transaction with hash " + transactionHash);
-        } catch(Exception e) {
-            throw e;
+        if(tx.hasError()) {
+            throw new OracleException(tx, tx.getError().getMessage());
         }
+
+        return tx.getTransactionHash();
+    }
+
+    private StaticGasProvider getGas(String function) throws OracleException {
+        BigInteger estimatedGas = estimateGas(function);
+
+
+        BigInteger gasPrice = DefaultGasProvider.GAS_PRICE;
+        //BigInteger gasLimit = DefaultGasProvider.GAS_LIMIT;
+        //BigInteger gasLimit = BigInteger.valueOf(900000);
+        //BigInteger gasPrice = BigInteger.ZERO;
+        BigInteger gasLimit = estimatedGas;
+
+        return new StaticGasProvider(gasPrice, gasLimit);
     }
 
     private BigInteger getNonce() throws Exception {
@@ -118,15 +133,16 @@ public class SitzungOracle {
         return nonce;
     }
 
-    private BigInteger estimateGas(String encodedFunction) throws Exception {
-        EthEstimateGas ethEstimateGas = web3.ethEstimateGas(
-                        Transaction.createEthCallTransaction(ACCOUNT, ONCHAIN_ORACLE_ADDRESS, encodedFunction))
-                .sendAsync().get();
+    private BigInteger estimateGas(String encodedFunction) throws OracleException {
+        try {
+            EthEstimateGas ethEstimateGas = web3.ethEstimateGas(Transaction.createEthCallTransaction(ACCOUNT, ONCHAIN_ORACLE_ADDRESS, encodedFunction))
+                    .sendAsync().get();
 
-        // this was coming back as 50,000,000 which is > the block gas limit of 4,712,388
-        // see eth.getBlock("latest")
-        BigInteger amount = ethEstimateGas.getAmountUsed();
-        return amount;
+            BigInteger amount = ethEstimateGas.getAmountUsed();
+            return amount;
+        } catch (Exception e) {
+            throw new OracleException("Unable to estimate gas: " + e.getMessage());
+        }
     }
 
     public static Bytes32 stringToBytes32(String string) {
@@ -145,6 +161,14 @@ public class SitzungOracle {
 
         ArrayList<Voter> result = new ArrayList<>();
         result.add(v1);
+
+        return result;
+    }
+
+    private List<AgendaItem> getAgenda() {
+        AgendaItem item1 = new AgendaItem("Item 1", "Agendaitem 1", "123455", true);
+        ArrayList<AgendaItem> result = new ArrayList<>();
+        result.add(item1);
 
         return result;
     }
