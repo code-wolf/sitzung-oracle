@@ -1,34 +1,30 @@
 package com.codewolf.sitzungoracle.oracle;
 
+import com.codewolf.sitzungoracle.configuration.EthereumConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.web3j.abi.FunctionEncoder;
-import org.web3j.abi.TypeReference;
 import org.web3j.abi.datatypes.DynamicArray;
 import org.web3j.abi.datatypes.Function;
-import org.web3j.abi.datatypes.Type;
-import org.web3j.abi.datatypes.Utf8String;
 import org.web3j.abi.datatypes.generated.Bytes32;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.DefaultBlockParameter;
-import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.core.methods.request.Transaction;
 import org.web3j.protocol.core.methods.response.EthEstimateGas;
-import org.web3j.protocol.core.methods.response.EthGetTransactionCount;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
-import org.web3j.protocol.core.methods.response.Web3ClientVersion;
 import org.web3j.protocol.http.HttpService;
-import org.web3j.tx.Contract;
-import org.web3j.tx.FastRawTransactionManager;
 import org.web3j.tx.RawTransactionManager;
 import org.web3j.tx.TransactionManager;
 import org.web3j.tx.gas.DefaultGasProvider;
 import org.web3j.tx.gas.StaticGasProvider;
 
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,22 +33,19 @@ import java.util.List;
 @Component
 public class SitzungOracle {
     private static final Logger logger = LoggerFactory.getLogger(SitzungOracle.class);
-    private static final String ONCHAIN_ORACLE_ADDRESS = "0x115A62f5413417996591AF6cf010b7a512cb39Cb";
-    private static final String ACCOUNT = "0xE3c0335ABb6ec86DD13BB01Ff63762F00aec31c7";
     private final Web3j web3;
+    private EthereumConfig configuration;
 
-    public SitzungOracle() {
-        web3 = Web3j.build(new HttpService("http://127.0.0.1:7545"));
+    @Autowired
+    public SitzungOracle(EthereumConfig configuration) {
+        this.configuration = configuration;
+        web3 = Web3j.build(new HttpService(this.configuration.getUrl()));
     }
 
     public String createSitzung(Sitzung sitzung) throws OracleException {
         logger.info("Send Sitzung " + sitzung.getName() + " to chain");
         try {
-            // Address: 0x130087C2Ede0c5E62Eb80414DEa19Bf7A3087EE3
-            //Credentials creds = Credentials.create("de941bace8537cbc11f20407e0aab989db7da2109edd0792e66cde5916b84201");
-
-            //0xE3c0335ABb6ec86DD13BB01Ff63762F00aec31c7
-            Credentials credentials = Credentials.create("b6e5f67e5474372d16e90ad72392383ceee0e6f9c47f288ed6288cac445ce439");
+            Credentials credentials = Credentials.create(configuration.getPrivate_key());
 
             List<Voter> voters = getVoters();
 
@@ -81,32 +74,15 @@ public class SitzungOracle {
 
 
         BigInteger gasPrice = DefaultGasProvider.GAS_PRICE;
-        //BigInteger gasLimit = DefaultGasProvider.GAS_LIMIT;
-        //BigInteger gasLimit = BigInteger.valueOf(900000);
-        //BigInteger gasPrice = BigInteger.ZERO;
         BigInteger gasLimit = estimatedGas;
 
         TransactionManager txManager = new RawTransactionManager(web3, credentials);
         EthSendTransaction tx = txManager.sendTransaction(
                 gasPrice,
                 gasLimit,
-                ONCHAIN_ORACLE_ADDRESS,
+                configuration.getOracle_address(),
                 function,
                 BigInteger.ZERO);
-
-            /*
-            BigInteger nonce = getNonce();
-            Transaction transaction = Transaction.createFunctionCallTransaction(
-                    ACCOUNT,
-                    nonce,
-                    gasPrice,
-                    gasLimit,
-                    ONCHAIN_ORACLE_ADDRESS,
-                    BigInteger.valueOf(0),
-                    encodedFunction);
-
-            EthSendTransaction tx = web3.ethSendTransaction(transaction).sendAsync().get();
-            */
 
         if(tx.hasError()) {
             throw new OracleException(tx, tx.getError().getMessage());
@@ -120,25 +96,14 @@ public class SitzungOracle {
 
 
         BigInteger gasPrice = DefaultGasProvider.GAS_PRICE;
-        //BigInteger gasLimit = DefaultGasProvider.GAS_LIMIT;
-        //BigInteger gasLimit = BigInteger.valueOf(900000);
-        //BigInteger gasPrice = BigInteger.ZERO;
         BigInteger gasLimit = estimatedGas;
 
         return new StaticGasProvider(gasPrice, gasLimit);
     }
 
-    private BigInteger getNonce() throws Exception {
-        EthGetTransactionCount count = web3.ethGetTransactionCount(ACCOUNT, DefaultBlockParameterName.LATEST)
-                .sendAsync()
-                .get();
-        BigInteger nonce = count.getTransactionCount();
-        return nonce;
-    }
-
     private BigInteger estimateGas(String encodedFunction) throws OracleException {
         try {
-            EthEstimateGas ethEstimateGas = web3.ethEstimateGas(Transaction.createEthCallTransaction(ACCOUNT, ONCHAIN_ORACLE_ADDRESS, encodedFunction))
+            EthEstimateGas ethEstimateGas = web3.ethEstimateGas(Transaction.createEthCallTransaction(configuration.getAccount(), configuration.getOracle_address(), encodedFunction))
                     .sendAsync().get();
 
             BigInteger amount = ethEstimateGas.getAmountUsed();

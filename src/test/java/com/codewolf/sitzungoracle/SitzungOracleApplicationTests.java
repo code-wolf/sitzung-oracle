@@ -1,5 +1,6 @@
 package com.codewolf.sitzungoracle;
 
+import com.codewolf.sitzungoracle.configuration.EthereumConfig;
 import com.codewolf.sitzungoracle.oracle.Sitzung;
 import com.codewolf.sitzungoracle.oracle.SitzungOracle;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,9 @@ import org.web3j.protocol.http.HttpService;
 class SitzungOracleApplicationTests {
     @Autowired
     SitzungOracle oracle;
+
+    @Autowired
+    private EthereumConfig configuration;
 
     @Test
     void contextLoads() {
