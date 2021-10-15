@@ -37,15 +37,16 @@ import java.util.List;
 @Component
 public class SitzungOracle {
     private static final Logger logger = LoggerFactory.getLogger(SitzungOracle.class);
-    private static final String ONCHAIN_ORACLE_ADDRESS = "0x572C8B01E651626079Adb759961f27e868Aefc64";
+    private static final String ONCHAIN_ORACLE_ADDRESS = "0x8A4d067DD9bafEbbA4aF6E29Ab5DB2ae909A393f";
     private static final String ACCOUNT = "0xE3c0335ABb6ec86DD13BB01Ff63762F00aec31c7";
     private final Web3j web3;
 
     public SitzungOracle() {
-        web3 = Web3j.build(new HttpService("http://localhost:7545"));
+        web3 = Web3j.build(new HttpService("http://127.0.0.1:7545"));
     }
 
-    public void createSitzung() throws Exception {
+    public String createSitzung(Sitzung _sitzung) throws OracleException {
+        logger.info("Send Sitzung " + _sitzung.getName() + " to chain");
         try {
             // Address: 0x130087C2Ede0c5E62Eb80414DEa19Bf7A3087EE3
             //Credentials creds = Credentials.create("de941bace8537cbc11f20407e0aab989db7da2109edd0792e66cde5916b84201");
@@ -53,7 +54,7 @@ public class SitzungOracle {
             //0xE3c0335ABb6ec86DD13BB01Ff63762F00aec31c7
             Credentials credentials = Credentials.create("b6e5f67e5474372d16e90ad72392383ceee0e6f9c47f288ed6288cac445ce439");
 
-            String id = "1234";
+            //String id = "1234";
             List<Voter> voters = getVoters();
             Sitzung sitzung = new Sitzung("1234", "Gemeinderat");
 
@@ -70,8 +71,9 @@ public class SitzungOracle {
 
             String transactionHash = sendTransaction(encodedFunction, credentials);
             logger.info("executed transaction with hash " + transactionHash);
+            return transactionHash;
         } catch(Exception e) {
-            throw e;
+            throw new OracleException(e.getMessage());
         }
     }
 
@@ -81,12 +83,20 @@ public class SitzungOracle {
      * @return Transaction hash of the transaction
      */
     private String sendTransaction(String function, Credentials credentials) throws Exception {
-        StaticGasProvider gas = getGas(function);
+        //StaticGasProvider gas = getGas(function);
+        BigInteger estimatedGas = estimateGas(function);
+
+
+        BigInteger gasPrice = DefaultGasProvider.GAS_PRICE;
+        //BigInteger gasLimit = DefaultGasProvider.GAS_LIMIT;
+        //BigInteger gasLimit = BigInteger.valueOf(900000);
+        //BigInteger gasPrice = BigInteger.ZERO;
+        BigInteger gasLimit = estimatedGas;
 
         TransactionManager txManager = new RawTransactionManager(web3, credentials);
         EthSendTransaction tx = txManager.sendTransaction(
-                gas.getGasPrice(),
-                gas.getGasLimit(),
+                gasPrice,
+                gasLimit,
                 ONCHAIN_ORACLE_ADDRESS,
                 function,
                 BigInteger.ZERO);

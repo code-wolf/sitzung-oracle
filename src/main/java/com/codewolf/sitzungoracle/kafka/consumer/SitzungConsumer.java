@@ -44,7 +44,7 @@ public class SitzungConsumer {
     @Autowired
     private SitzungOracle oracle;
 
-    //@PostConstruct
+    @PostConstruct
     public void start() {
         Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "streams-sitzungen");
@@ -91,12 +91,10 @@ public class SitzungConsumer {
         streams.start();
     }
 
-    /*
     @PreDestroy
     public void stop() {
         streams.close();
     }
-    */
 
     private KeyValue<String, Sitzung> mapSitzung(String key, SitzungPojo pojo) {
         Sitzung sitzung = new Sitzung(pojo.getKey(), pojo.getName());

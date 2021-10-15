@@ -1,5 +1,6 @@
 package com.codewolf.sitzungoracle;
 
+import com.codewolf.sitzungoracle.oracle.Sitzung;
 import com.codewolf.sitzungoracle.oracle.SitzungOracle;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -23,7 +24,8 @@ class SitzungOracleApplicationTests {
     @Test
     void testCreateSitzung() {
         try {
-            oracle.createSitzung();
+            Sitzung sitzung = new Sitzung("1234", "Gemeinderat");
+            oracle.createSitzung(sitzung);
         } catch(Exception e) {
 
         }

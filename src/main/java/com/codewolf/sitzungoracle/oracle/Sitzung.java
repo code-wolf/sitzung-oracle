@@ -8,7 +8,6 @@ import org.web3j.abi.datatypes.generated.Bytes32;
 public class Sitzung extends DynamicStruct {
     public byte[] id;
     public String name;
-
     public Sitzung(byte id[], String name) {
         super(ByteConverter.bytesToBytes32(id), new Utf8String(name));
 
@@ -28,5 +27,21 @@ public class Sitzung extends DynamicStruct {
 
         this.id = id.getValue();
         this.name = name.getValue();
+    }
+
+    public byte[] getId() {
+        return id;
+    }
+
+    public void setId(byte[] id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 }
