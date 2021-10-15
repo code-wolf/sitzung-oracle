@@ -37,7 +37,7 @@ import java.util.List;
 @Component
 public class SitzungOracle {
     private static final Logger logger = LoggerFactory.getLogger(SitzungOracle.class);
-    private static final String ONCHAIN_ORACLE_ADDRESS = "0x8A4d067DD9bafEbbA4aF6E29Ab5DB2ae909A393f";
+    private static final String ONCHAIN_ORACLE_ADDRESS = "0x115A62f5413417996591AF6cf010b7a512cb39Cb";
     private static final String ACCOUNT = "0xE3c0335ABb6ec86DD13BB01Ff63762F00aec31c7";
     private final Web3j web3;
 
@@ -45,8 +45,8 @@ public class SitzungOracle {
         web3 = Web3j.build(new HttpService("http://127.0.0.1:7545"));
     }
 
-    public String createSitzung(Sitzung _sitzung) throws OracleException {
-        logger.info("Send Sitzung " + _sitzung.getName() + " to chain");
+    public String createSitzung(Sitzung sitzung) throws OracleException {
+        logger.info("Send Sitzung " + sitzung.getName() + " to chain");
         try {
             // Address: 0x130087C2Ede0c5E62Eb80414DEa19Bf7A3087EE3
             //Credentials creds = Credentials.create("de941bace8537cbc11f20407e0aab989db7da2109edd0792e66cde5916b84201");
@@ -54,19 +54,12 @@ public class SitzungOracle {
             //0xE3c0335ABb6ec86DD13BB01Ff63762F00aec31c7
             Credentials credentials = Credentials.create("b6e5f67e5474372d16e90ad72392383ceee0e6f9c47f288ed6288cac445ce439");
 
-            //String id = "1234";
             List<Voter> voters = getVoters();
-            Sitzung sitzung = new Sitzung("1234", "Gemeinderat");
 
             Function function = new Function("createSitzung",
                     Arrays.asList(sitzung, new DynamicArray(Voter.class, voters), new DynamicArray(AgendaItem.class, getAgenda())),
                     Collections.emptyList());
 
-            /*
-            Function function = new Function("testSitzung",
-                    Collections.emptyList(),
-                    Collections.emptyList());
-            */
             String encodedFunction = FunctionEncoder.encode(function);
 
             String transactionHash = sendTransaction(encodedFunction, credentials);
