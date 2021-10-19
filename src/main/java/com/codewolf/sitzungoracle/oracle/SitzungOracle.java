@@ -1,6 +1,7 @@
 package com.codewolf.sitzungoracle.oracle;
 
 import com.codewolf.sitzungoracle.configuration.EthereumConfig;
+import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Component
 public class SitzungOracle {
@@ -39,18 +42,24 @@ public class SitzungOracle {
     @Autowired
     public SitzungOracle(EthereumConfig configuration) {
         this.configuration = configuration;
-        web3 = Web3j.build(new HttpService(this.configuration.getUrl()));
+        OkHttpClient okHttpClient = HttpService.getOkHttpClientBuilder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(60, TimeUnit.SECONDS)
+                .build();
+        web3 = Web3j.build(new HttpService(this.configuration.getUrl(), okHttpClient));
     }
 
-    public String createSitzung(Sitzung sitzung) throws OracleException {
+    public String createSitzung(Sitzung sitzung, List<AgendaItem> agenda, List<Voter> voters) throws OracleException {
         logger.info("Send Sitzung " + sitzung.getName() + " to chain");
         try {
             Credentials credentials = Credentials.create(configuration.getPrivate_key());
 
-            List<Voter> voters = getVoters();
+            List<Voter> _voters = getVoters();
+            List<AgendaItem> _agenda = getAgenda();
 
             Function function = new Function("createSitzung",
-                    Arrays.asList(sitzung, new DynamicArray(Voter.class, voters), new DynamicArray(AgendaItem.class, getAgenda())),
+                    Arrays.asList(sitzung, new DynamicArray(Voter.class, voters), new DynamicArray(AgendaItem.class, agenda)),
                     Collections.emptyList());
 
             String encodedFunction = FunctionEncoder.encode(function);
@@ -59,8 +68,75 @@ public class SitzungOracle {
             logger.info("executed transaction with hash " + transactionHash);
             return transactionHash;
         } catch(Exception e) {
+            // maybe incorrect oracle address?
             throw new OracleException(e.getMessage());
         }
+    }
+
+    public String addSitzung(Sitzung sitzung) throws OracleException {
+        logger.info("Adding Sitzung " + sitzung.getName() + " to chain");
+        try {
+            Credentials credentials = Credentials.create(configuration.getPrivate_key());
+
+            Function function = new Function("addSitzung",
+                    Arrays.asList(sitzung),
+                    Collections.emptyList());
+
+            String encodedFunction = FunctionEncoder.encode(function);
+
+            String transactionHash = sendTransaction(encodedFunction, credentials);
+            logger.info("executed transaction with hash " + transactionHash);
+            return transactionHash;
+        } catch(Exception e) {
+            // maybe incorrect oracle address?
+            throw new OracleException(e.getMessage());
+        }
+    }
+
+    public List<String> addVoters(Sitzung sitzung, List<Voter> voters) {
+        logger.info("Adding " + voters.size() + " voter(s) to chain");
+
+        Credentials credentials = Credentials.create(configuration.getPrivate_key());
+
+        return voters.stream().map(voter -> {
+            Function function = new Function("addVoter",
+                    Arrays.asList(sitzung.getId(), voter),
+                    Collections.emptyList());
+
+            String encodedFunction = FunctionEncoder.encode(function);
+            try {
+                String transactionHash = sendTransaction(encodedFunction, credentials);
+                logger.info("executed voter transaction with hash " + transactionHash);
+                return transactionHash;
+            } catch(Exception e) {
+                logger.error(e.getMessage());
+                // maybe incorrect oracle address?
+                return null;
+            }
+        }).collect(Collectors.toList());
+    }
+
+    public List<String> addAgendaItem(Sitzung sitzung, List<AgendaItem> items) {
+        logger.info("Adding " + items.size() + " agenda item(s) to chain");
+
+        Credentials credentials = Credentials.create(configuration.getPrivate_key());
+
+        return items.stream().map(item -> {
+            Function function = new Function("addAgendaItem",
+                    Arrays.asList(sitzung.getId(), item),
+                    Collections.emptyList());
+
+            String encodedFunction = FunctionEncoder.encode(function);
+            try {
+                String transactionHash = sendTransaction(encodedFunction, credentials);
+                logger.info("executed agenda transaction with hash " + transactionHash);
+                return transactionHash;
+            } catch(Exception e) {
+                // maybe incorrect oracle address?
+                logger.error(e.getMessage());
+                return null;
+            }
+        }).collect(Collectors.toList());
     }
 
     /**
@@ -73,7 +149,7 @@ public class SitzungOracle {
         BigInteger estimatedGas = estimateGas(function);
 
 
-        BigInteger gasPrice = DefaultGasProvider.GAS_PRICE;
+        BigInteger gasPrice = BigInteger.ZERO;
         BigInteger gasLimit = estimatedGas;
 
         TransactionManager txManager = new RawTransactionManager(web3, credentials);
@@ -134,7 +210,7 @@ public class SitzungOracle {
     }
 
     private List<AgendaItem> getAgenda() {
-        AgendaItem item1 = new AgendaItem("Item 1", "Agendaitem 1", "123455", true);
+        AgendaItem item1 = new AgendaItem("Item 1", "Agendaitem 1", "123455");
         ArrayList<AgendaItem> result = new ArrayList<>();
         result.add(item1);
 

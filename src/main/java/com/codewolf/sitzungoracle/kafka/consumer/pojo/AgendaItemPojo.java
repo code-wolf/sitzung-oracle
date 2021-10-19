@@ -3,7 +3,6 @@ package com.codewolf.sitzungoracle.kafka.consumer.pojo;
 public class AgendaItemPojo {
     private String _id;
     private String key;
-    private Boolean isActive;
     private String aktZahl;
     private Integer aktTypId;
     private String aktTyp;
@@ -24,14 +23,6 @@ public class AgendaItemPojo {
 
     public void setKey(String key) {
         this.key = key;
-    }
-
-    public Boolean getActive() {
-        return isActive;
-    }
-
-    public void setActive(Boolean active) {
-        isActive = active;
     }
 
     public String getAktZahl() {
