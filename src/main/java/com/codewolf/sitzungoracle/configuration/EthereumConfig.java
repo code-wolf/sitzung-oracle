@@ -16,7 +16,7 @@ public class EthereumConfig {
 
 
     public EthereumConfig() {
-        System.out.println("config");
+
     }
 
     public String getOracle_address() {

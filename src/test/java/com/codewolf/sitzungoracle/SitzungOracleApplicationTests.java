@@ -33,26 +33,26 @@ class SitzungOracleApplicationTests {
 
     }
 
-    @Test
+    //@Test
     void testCreateSitzung() {
         try {
             oracle.createSitzung(getSitzung(), getAgenda(1), getVoters(1));
         } catch(Exception e) {
-
+            assert (false);
         }
     }
 
-    @Test
+    //@Test
     void testAddSitzung() {
         try {
             Sitzung sitzung = getSitzung();
-            List<Voter> voters = getVoters(1);
-            List<AgendaItem> agenda = getAgenda(1);
+            List<Voter> voters = getVoters(10);
+            List<AgendaItem> agenda = getAgenda(10);
             String tx = oracle.addSitzung(sitzung);
             List<String> txs = oracle.addVoters(sitzung, voters);
             txs = oracle.addAgendaItem(sitzung, agenda);
         } catch (Exception e) {
-
+            assert(false);
         }
 
     }
