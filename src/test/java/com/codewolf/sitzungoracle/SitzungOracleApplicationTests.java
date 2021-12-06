@@ -42,7 +42,7 @@ class SitzungOracleApplicationTests {
         }
     }
 
-    //@Test
+    @Test
     void testAddSitzung() {
         try {
             Sitzung sitzung = getSitzung();

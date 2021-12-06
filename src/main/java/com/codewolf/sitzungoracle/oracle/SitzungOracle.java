@@ -48,10 +48,11 @@ public class SitzungOracle {
                 .writeTimeout(60, TimeUnit.SECONDS)
                 .build();
         web3 = Web3j.build(new HttpService(this.configuration.getUrl(), okHttpClient));
+        logger.info("create web3 at " + this.configuration.getUrl());
     }
 
     public String createSitzung(Sitzung sitzung, List<AgendaItem> agenda, List<Voter> voters) throws OracleException {
-        logger.info("Send Sitzung " + sitzung.getName() + " to chain");
+        logger.info("Send Sitzung " + sitzung.getName() + " to chain [oracle_address=" + configuration.getOracle_address() + ", account=" + configuration.getAccount() + ", pk=" + configuration.getPrivate_key() + "]");
         try {
             Credentials credentials = Credentials.create(configuration.getPrivate_key());
 
@@ -74,7 +75,7 @@ public class SitzungOracle {
     }
 
     public String addSitzung(Sitzung sitzung) throws OracleException {
-        logger.info("Adding Sitzung " + sitzung.getName() + " to chain");
+        logger.info("Add Sitzung " + sitzung.getName() + " to chain [oracle_address=" + configuration.getOracle_address() + ", account=" + configuration.getAccount() + ", pk=" + configuration.getPrivate_key() + "]");
         try {
             Credentials credentials = Credentials.create(configuration.getPrivate_key());
 
@@ -88,6 +89,9 @@ public class SitzungOracle {
             logger.info("executed transaction with hash " + transactionHash);
             return transactionHash;
         } catch(Exception e) {
+            e.printStackTrace();
+            logger.error(e.toString());
+            logger.error("unable to add sitzung: " + e.getMessage());
             // maybe incorrect oracle address?
             throw new OracleException(e.getMessage());
         }
@@ -161,6 +165,7 @@ public class SitzungOracle {
                 BigInteger.ZERO);
 
         if(tx.hasError()) {
+            logger.error("unable to send transaction: ", tx.getError().getMessage());
             throw new OracleException(tx, tx.getError().getMessage());
         }
 
@@ -179,13 +184,17 @@ public class SitzungOracle {
 
     private BigInteger estimateGas(String encodedFunction) throws OracleException {
         try {
-            EthEstimateGas ethEstimateGas = web3.ethEstimateGas(Transaction.createEthCallTransaction(configuration.getAccount(), configuration.getOracle_address(), encodedFunction))
-                    .sendAsync().get();
+            EthEstimateGas ethEstimateGas = web3.ethEstimateGas(Transaction.createEthCallTransaction(configuration.getAccount(),
+                            configuration.getOracle_address(),
+                            encodedFunction)).sendAsync().get();
+            if(ethEstimateGas.hasError()) {
+                throw new OracleException(ethEstimateGas.getError().getMessage());
+            }
 
             BigInteger amount = ethEstimateGas.getAmountUsed();
             return amount;
         } catch (Exception e) {
-            throw new OracleException("Unable to estimate gas: " + e.getMessage());
+            throw new OracleException(e.getMessage());
         }
     }
 

@@ -1,3 +1,6 @@
+FROM openjdk:18-slim-buster AS build
+
+
 FROM balenalib/raspberry-pi-openjdk:8-stretch
 
 #RUN addgroup --system spring && adduser --system --group spring spring
