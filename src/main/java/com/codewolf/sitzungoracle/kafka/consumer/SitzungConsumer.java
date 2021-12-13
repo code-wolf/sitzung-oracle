@@ -86,7 +86,7 @@ public class SitzungConsumer {
                     Sitzung sitzung = new Sitzung(sitzungPojo.getKey(), sitzungPojo.getName(), sitzungPojo.getStartDate(), sitzungPojo.getIsActive());
                     List<AgendaItem> agenda = sitzungPojo.getAgenda()
                             .stream()
-                            .map(x -> new AgendaItem(x.get_id(), x.getAktBetreff(), x.getAktZahl()))
+                            .map(x -> new AgendaItem(x.getKey(), x.getAktBetreff(), x.getAktZahl()))
                             .collect(Collectors.toList());
                     List<Voter> voters = sitzungPojo.getPersons()
                             .stream()
@@ -108,25 +108,6 @@ public class SitzungConsumer {
         resultStream.to(STREAM_NAME_LOG);
         streams = new KafkaStreams(builder.build(), props);
         streams.start();
-    }
-
-    private List<KeyValue<String, Object>> splitSitzung(String key, SitzungPojo sitzungPojo) {
-        List<KeyValue<String, Object>> result = new ArrayList<>();
-        Sitzung sitzung = new Sitzung(sitzungPojo.getKey(), sitzungPojo.getName(), sitzungPojo.getStartDate(), sitzungPojo.getIsActive());
-        List<AgendaItem> agenda = sitzungPojo.getAgenda()
-                .stream()
-                .map(x -> new AgendaItem(x.get_id(), x.getAktBetreff(), x.getAktZahl()))
-                .collect(Collectors.toList());
-        List<Voter> voters = sitzungPojo.getPersons()
-                .stream()
-                .map(x -> new Voter(x.getEthereumAddress(), x.getFirstName(), x.getLastName(), x.getParty(), x.getKey()))
-                .collect(Collectors.toList());
-
-        result.add(KeyValue.pair(STREAM_KEY_SITZUNG, sitzung));
-        result.add(KeyValue.pair(STREAM_KEY_AGENDA, agenda));
-        result.add(KeyValue.pair(STREAM_KEY_VOTERS, voters));
-
-        return result;
     }
 
     @PreDestroy
