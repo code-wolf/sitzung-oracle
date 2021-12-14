@@ -16,6 +16,7 @@
  */
 package com.codewolf.sitzungoracle.kafka.consumer.serde;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -31,6 +32,7 @@ public class JsonPOJODeserializer<T> implements Deserializer<T> {
      * Default constructor needed by Kafka
      */
     public JsonPOJODeserializer() {
+        objectMapper.disable(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES);
     }
 
     @SuppressWarnings("unchecked")

@@ -1,10 +1,12 @@
 package com.codewolf.sitzungoracle;
 
 import com.codewolf.sitzungoracle.configuration.EthereumConfig;
+import com.codewolf.sitzungoracle.kafka.consumer.serde.JsonPOJODeserializer;
 import com.codewolf.sitzungoracle.oracle.AgendaItem;
 import com.codewolf.sitzungoracle.oracle.Sitzung;
 import com.codewolf.sitzungoracle.oracle.SitzungOracle;
 import com.codewolf.sitzungoracle.oracle.Voter;
+import kafka.utils.Json;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +16,7 @@ import org.web3j.protocol.Web3j;
 import org.web3j.protocol.core.methods.response.Web3ClientVersion;
 import org.web3j.protocol.http.HttpService;
 
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -57,6 +60,7 @@ class SitzungOracleApplicationTests {
 
     }
 
+    
     private Sitzung getSitzung() {
         Date now = new Date();
         DateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");

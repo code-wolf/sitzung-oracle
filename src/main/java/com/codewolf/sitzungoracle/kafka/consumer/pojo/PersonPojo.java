@@ -1,5 +1,8 @@
 package com.codewolf.sitzungoracle.kafka.consumer.pojo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties
 public class PersonPojo {
     private String _id;
     private String key;

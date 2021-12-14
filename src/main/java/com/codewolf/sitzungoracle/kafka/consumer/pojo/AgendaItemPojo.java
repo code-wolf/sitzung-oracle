@@ -1,5 +1,10 @@
 package com.codewolf.sitzungoracle.kafka.consumer.pojo;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import java.util.List;
+
+@JsonIgnoreProperties
 public class AgendaItemPojo {
     private String _id;
     private String key;
@@ -8,6 +13,16 @@ public class AgendaItemPojo {
     private String aktTyp;
     private String aktBetreff;
     private Integer optionType;
+
+    public List<VotingPojo> getVotings() {
+        return votings;
+    }
+
+    public void setVotings(List<VotingPojo> votings) {
+        this.votings = votings;
+    }
+
+    private List<VotingPojo> votings;
 
     public String get_id() {
         return _id;
